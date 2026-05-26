@@ -1,301 +1,507 @@
-<!DOCTYPE html>
-<html>
+from pathlib import Path
 
+csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGru3ycpoLLEHVaID-pg7MZzUZ-JZYd9VLtzPoIHzILq6EoaBskvVw7NcPquHuQMkNzeWNAL-6dSvo/pub?gid=1280475431&single=true&output=csv"
+
+html = f"""<!DOCTYPE html>
+<html lang="vi">
 <head>
-
-<meta charset="utf-8">
-
-<title>
-Goldnet Dashboard
-</title>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Goldnet Financial Dashboard</title>
 <style>
-
-body{
-
-background:#08111F;
-color:white;
-font-family:Arial;
-padding:30px;
-
-}
-
-.card{
-
-background:#132238;
-padding:20px;
-border-radius:15px;
-margin-bottom:20px;
-
-}
-
-.big{
-
-font-size:32px;
-font-weight:bold;
-
-}
-
-input{
-
-padding:12px;
-width:600px;
-border:none;
-border-radius:10px;
-
-}
-
-button{
-
-padding:12px 20px;
-background:#2EA8FF;
-border:none;
-color:white;
-border-radius:10px;
-cursor:pointer;
-
-}
-
+:root {{
+  --bg: #07111f;
+  --card: #132238;
+  --card2: #0f1b2e;
+  --text: #ffffff;
+  --muted: #9fb3c8;
+  --blue: #38bdf8;
+  --green: #34d399;
+  --yellow: #fbbf24;
+  --red: #fb7185;
+  --purple: #a78bfa;
+}}
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  padding: 28px;
+}}
+.header {{
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 22px;
+}}
+h1 {{ margin: 0; font-size: 34px; }}
+.subtitle {{ color: var(--muted); margin-top: 8px; }}
+.status {{
+  background: var(--card);
+  padding: 14px 18px;
+  border-radius: 16px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}}
+.grid {{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}}
+.grid2 {{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}}
+.card {{
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.18);
+}}
+.label {{ color: var(--muted); font-size: 14px; }}
+.value {{ font-size: 28px; font-weight: 800; margin-top: 10px; }}
+.helper {{ color: var(--muted); font-size: 12px; margin-top: 8px; }}
+.good {{ color: var(--green); }}
+.warn {{ color: var(--yellow); }}
+.bad {{ color: var(--red); }}
+.blue {{ color: var(--blue); }}
+.purple {{ color: var(--purple); }}
+.chart-title {{ font-size: 18px; font-weight: 700; margin-bottom: 6px; }}
+.chart-subtitle {{ color: var(--muted); font-size: 12px; margin-bottom: 18px; }}
+.bar-row {{
+  margin-bottom: 14px;
+}}
+.bar-top {{
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 6px;
+}}
+.track {{
+  width: 100%;
+  height: 10px;
+  background: #0b1424;
+  border-radius: 999px;
+  overflow: hidden;
+}}
+.fill {{
+  height: 10px;
+  border-radius: 999px;
+  background: var(--blue);
+}}
+.fill.green {{ background: var(--green); }}
+.fill.purple {{ background: var(--purple); }}
+.fill.red {{ background: var(--red); }}
+.month-bars {{
+  height: 280px;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  overflow-x: auto;
+  padding-top: 20px;
+}}
+.month-item {{
+  min-width: 82px;
+  text-align: center;
+}}
+.month-bar {{
+  width: 44px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, var(--blue), #2563eb);
+  border-radius: 10px 10px 0 0;
+}}
+.month-label {{ color: var(--muted); font-size: 11px; margin-top: 8px; }}
+.month-value {{ font-size: 11px; margin-top: 4px; }}
+table {{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}}
+th, td {{
+  padding: 11px 8px;
+  border-bottom: 1px solid rgba(148,163,184,0.18);
+}}
+th {{ text-align: left; color: var(--muted); font-weight: 600; }}
+td.right, th.right {{ text-align: right; }}
+.footer {{
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 20px;
+}}
+@media (max-width: 1100px) {{
+  .grid {{ grid-template-columns: repeat(2, 1fr); }}
+  .grid2 {{ grid-template-columns: 1fr; }}
+}}
+@media (max-width: 640px) {{
+  body {{ padding: 16px; }}
+  .grid {{ grid-template-columns: 1fr; }}
+  h1 {{ font-size: 26px; }}
+}}
 </style>
-
 </head>
-
 <body>
 
-<h1>
-Goldnet Financial Dashboard
-</h1>
-
-<div class="card">
-
-<input
-id="csv"
-placeholder="Paste CSV Link"
-/>
-
-<button
-onclick="load()"
->
-
-Load Data
-
-</button>
-
+<div class="header">
+  <div>
+    <h1>Goldnet Financial Dashboard</h1>
+    <div class="subtitle">Finance Manager View • Revenue • Invoice • Cash-in • AR Aging</div>
+  </div>
 </div>
 
-<div id="dashboard">
+<div id="status" class="status">Đang tải dữ liệu từ Google Sheet...</div>
 
+<div class="grid" id="kpis"></div>
+<div class="grid" id="kpis2"></div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="chart-title">Revenue Trend</div>
+    <div class="chart-subtitle">Theo tháng xuất hóa đơn</div>
+    <div id="trend" class="month-bars"></div>
+  </div>
+
+  <div class="card">
+    <div class="chart-title">Revenue Waterfall</div>
+    <div class="chart-subtitle">Accepted → Invoiced → Cash Collected → Outstanding AR</div>
+    <div id="waterfall"></div>
+  </div>
+
+  <div class="card">
+    <div class="chart-title">Revenue by Client</div>
+    <div class="chart-subtitle">Top clients theo doanh thu chưa VAT</div>
+    <div id="clients"></div>
+  </div>
+
+  <div class="card">
+    <div class="chart-title">Revenue by Service</div>
+    <div class="chart-subtitle">Top services theo doanh thu chưa VAT</div>
+    <div id="services"></div>
+  </div>
+
+  <div class="card">
+    <div class="chart-title">AR Aging</div>
+    <div class="chart-subtitle">Các khoản đã xuất hóa đơn nhưng chưa thu tiền</div>
+    <div id="aging"></div>
+  </div>
+
+  <div class="card">
+    <div class="chart-title">Top Outstanding AR</div>
+    <div class="chart-subtitle">Danh sách khoản phải thu lớn nhất</div>
+    <div style="overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Service</th>
+            <th>Invoice</th>
+            <th class="right">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="arTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Data source: Published CSV của MASTER TRACKING. Dashboard tự load khi mở link.
 </div>
 
 <script>
-
-function vnd(x){
-
-return new Intl
-.NumberFormat(
-
-"vi-VN",
-
-{
-
-style:"currency",
-
-currency:"VND"
-
-}
-
-)
-
-.format(x)
-
-}
-
-function num(x){
-
-return Number(
-
-String(x)
-
-.replaceAll(".","")
-
-.replaceAll(",","")
-
-)||0
-
-}
-
-async function load(){
-
-const url=
-
-document
-.getElementById(
-"csv"
-)
-.value
-
-const raw=
-
-await fetch(
-url
-)
-
-const csv=
-
-await raw.text()
-
-const lines=
-
-csv
-.split("\n")
-
-const headers=
-
-lines[0]
-.split(",")
-
-const rows=
-
-lines
-.slice(1)
-
-.map(x=>{
-
-const obj={}
-
-x
-.split(",")
-
-.forEach(
-
-(v,i)=>{
-
-obj[
-headers[i]
-]
-
-=v
-
-}
-
-)
-
-return obj
-
-})
-
-const revenue=
-
-rows.reduce(
-
-(a,b)=>
-
-a+
-
-num(
-
-b[
-"Value (Chưa VAT)"
-]
-
-)
-
-,0
-
-)
-
-const cash=
-
-rows
-
-.filter(
-
-x=>
-
-x[
-"Payment Status"
-]
-
-?.includes(
-
-"thanh toán"
-
-)
-
-)
-
-.reduce(
-
-(a,b)=>
-
-a+
-
-num(
-
-b[
-"Value (Chưa VAT)"
-]
-
-)
-
-,0
-
-)
-
-document
-
-.getElementById(
-"dashboard"
-)
-
-.innerHTML=
-
-`
-
-<div class="card">
-
-Revenue
-
-<div class="big">
-
-${vnd(revenue)}
-
-</div>
-
-</div>
-
-<div class="card">
-
-Cash In
-
-<div class="big">
-
-${vnd(cash)}
-
-</div>
-
-</div>
-
-<div class="card">
-
-Outstanding AR
-
-<div class="big">
-
-${vnd(
-revenue-cash
-)}
-
-</div>
-
-</div>
-
-`
-
-}
-
+const CSV_URL = "{csv_url}";
+
+function parseCsvLine(line) {{
+  const result = [];
+  let current = "";
+  let insideQuotes = false;
+  for (let i = 0; i < line.length; i++) {{
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && insideQuotes && next === '"') {{
+      current += '"';
+      i++;
+    }} else if (char === '"') {{
+      insideQuotes = !insideQuotes;
+    }} else if (char === "," && !insideQuotes) {{
+      result.push(current.trim());
+      current = "";
+    }} else {{
+      current += char;
+    }}
+  }}
+  result.push(current.trim());
+  return result;
+}}
+
+function normalizeHeader(header) {{
+  return String(header || "")
+    .replaceAll("\\r\\n", " ")
+    .replaceAll("\\n", " ")
+    .replace(/\\s+/g, " ")
+    .trim();
+}}
+
+function parseCsv(csvText) {{
+  const lines = csvText
+    .replace(/^\\uFEFF/, "")
+    .split(/\\r?\\n/)
+    .filter(line => line.trim() !== "");
+
+  if (lines.length < 2) return [];
+
+  let headerIndex = 0;
+  for (let i = 0; i < Math.min(lines.length, 12); i++) {{
+    const cells = parseCsvLine(lines[i]);
+    if (cells.some(cell => ["Project Code", "Client", "Value", "Payment Status", "Invoice"].some(key => String(cell).includes(key)))) {{
+      headerIndex = i;
+      break;
+    }}
+  }}
+
+  const headers = parseCsvLine(lines[headerIndex]).map(normalizeHeader);
+
+  return lines.slice(headerIndex + 1).map(line => {{
+    const values = parseCsvLine(line);
+    const row = {{}};
+    headers.forEach((header, index) => {{
+      if (header) row[header] = values[index] ?? "";
+    }});
+    return row;
+  }}).filter(row => row["Client"] || row["Project Code"] || row["Value (Chưa VAT)"]);
+}}
+
+function toNumber(value) {{
+  if (typeof value === "number") return value;
+  if (!value) return 0;
+  const cleaned = String(value)
+    .replace(/\\s/g, "")
+    .replace(/₫|VND|đ/gi, "")
+    .replace(/,/g, "")
+    .replace(/\\./g, "")
+    .replace(/[()]/g, "");
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+}}
+
+function normalizeText(value) {{
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}}
+
+function parseDate(value) {{
+  if (!value) return null;
+  const text = String(value).trim();
+  const dmy = text.match(/^(\\d{{1,2}})\\/(\\d{{1,2}})\\/(\\d{{4}})$/);
+  if (dmy) return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+  const my = text.match(/^(\\d{{1,2}})\\/(\\d{{4}})$/);
+  if (my) return new Date(Number(my[2]), Number(my[1]) - 1, 1);
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date;
+}}
+
+function monthKey(value) {{
+  const date = parseDate(value);
+  if (!date) return "Unknown";
+  return `${{date.getFullYear()}}-${{String(date.getMonth() + 1).padStart(2, "0")}}`;
+}}
+
+function daysBetween(date) {{
+  if (!date) return null;
+  const now = new Date();
+  return Math.floor((now - date) / (1000 * 60 * 60 * 24));
+}}
+
+function isPaid(row) {{
+  return normalizeText(row["Payment Status"]).includes("da thanh toan") || Boolean(row["Ngày thanh toán thực"]);
+}}
+
+function isInvoiced(row) {{
+  return Boolean(row["Invoice Issued No"] || row["Invoice Date"] || row["Tháng Xuất Hóa Đơn"]);
+}}
+
+function isAccepted(row) {{
+  return normalizeText(row["Acceptance type"]).includes("nghiem thu");
+}}
+
+function value(row) {{
+  return toNumber(row["Value (Chưa VAT)"]);
+}}
+
+function vnd(number) {{
+  return new Intl.NumberFormat("vi-VN", {{
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0
+  }}).format(number || 0);
+}}
+
+function compact(number) {{
+  if (Math.abs(number) >= 1000000000) return (number / 1000000000).toFixed(1) + "B";
+  if (Math.abs(number) >= 1000000) return (number / 1000000).toFixed(0) + "M";
+  return new Intl.NumberFormat("vi-VN").format(number || 0);
+}}
+
+function sum(rows) {{
+  return rows.reduce((total, row) => total + value(row), 0);
+}}
+
+function groupSum(rows, field) {{
+  const map = new Map();
+  rows.forEach(row => {{
+    const key = row[field] || "Unknown";
+    map.set(key, (map.get(key) || 0) + value(row));
+  }});
+  return Array.from(map.entries())
+    .map(([name, amount]) => ({{ name, amount }}))
+    .filter(item => item.amount > 0)
+    .sort((a, b) => b.amount - a.amount);
+}}
+
+function renderKpi(title, amount, helper, cls = "blue") {{
+  return `
+    <div class="card">
+      <div class="label">${{title}}</div>
+      <div class="value ${{cls}}">${{amount}}</div>
+      <div class="helper">${{helper}}</div>
+    </div>
+  `;
+}}
+
+function renderBars(targetId, data, colorClass = "") {{
+  const max = Math.max(...data.map(item => item.amount), 1);
+  document.getElementById(targetId).innerHTML = data.slice(0, 10).map(item => `
+    <div class="bar-row">
+      <div class="bar-top">
+        <span>${{item.name}}</span>
+        <strong>${{vnd(item.amount)}}</strong>
+      </div>
+      <div class="track">
+        <div class="fill ${{colorClass}}" style="width:${{Math.max(2, item.amount / max * 100)}}%"></div>
+      </div>
+    </div>
+  `).join("");
+}}
+
+function renderDashboard(rows) {{
+  const totalRevenue = sum(rows);
+  const acceptedRevenue = sum(rows.filter(isAccepted));
+  const invoicedRevenue = sum(rows.filter(isInvoiced));
+  const cashCollected = sum(rows.filter(isPaid));
+  const outstandingAR = Math.max(invoicedRevenue - cashCollected, 0);
+  const acceptedNotInvoiced = sum(rows.filter(row => isAccepted(row) && !isInvoiced(row)));
+  const collectionRate = invoicedRevenue ? cashCollected / invoicedRevenue : 0;
+  const revenueRecognitionRate = totalRevenue ? acceptedRevenue / totalRevenue : 0;
+
+  const arRows = rows
+    .filter(row => isInvoiced(row) && !isPaid(row))
+    .map(row => {{
+      const invoiceDate = parseDate(row["Invoice Date"]);
+      return {{ ...row, agingDays: daysBetween(invoiceDate) || 0 }};
+    }})
+    .sort((a, b) => value(b) - value(a));
+
+  const arOver90 = sum(arRows.filter(row => row.agingDays > 90));
+  const avgDsoBase = arRows.filter(row => row.agingDays > 0);
+  const avgDso = avgDsoBase.length
+    ? Math.round(avgDsoBase.reduce((total, row) => total + row.agingDays, 0) / avgDsoBase.length)
+    : 0;
+
+  document.getElementById("kpis").innerHTML =
+    renderKpi("Total Revenue", vnd(totalRevenue), `${{rows.length}} project lines`, "blue") +
+    renderKpi("Accepted Revenue", vnd(acceptedRevenue), `${{(revenueRecognitionRate * 100).toFixed(1)}}% of total revenue`, "green") +
+    renderKpi("Invoiced Revenue", vnd(invoicedRevenue), "Invoice issued/date/month available", "purple") +
+    renderKpi("Cash Collected", vnd(cashCollected), `${{(collectionRate * 100).toFixed(1)}}% collection rate`, "green");
+
+  document.getElementById("kpis2").innerHTML =
+    renderKpi("Outstanding AR", vnd(outstandingAR), "Invoiced but not collected", outstandingAR > 0 ? "bad" : "good") +
+    renderKpi("AR > 90 Days", vnd(arOver90), "High-risk receivables", arOver90 > 0 ? "bad" : "good") +
+    renderKpi("Accepted Not Invoiced", vnd(acceptedNotInvoiced), "Accepted but missing invoice info", acceptedNotInvoiced > 0 ? "warn" : "good") +
+    renderKpi("Avg DSO Proxy", `${{avgDso}} days`, "Average aging of open AR", avgDso > 60 ? "bad" : "green");
+
+  const monthlyMap = new Map();
+  rows.forEach(row => {{
+    const key = monthKey(row["Tháng Xuất Hóa Đơn"] || row["Invoice Date"]);
+    monthlyMap.set(key, (monthlyMap.get(key) || 0) + value(row));
+  }});
+
+  const monthly = Array.from(monthlyMap.entries())
+    .map(([month, amount]) => ({{ month, amount }}))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  const maxMonth = Math.max(...monthly.map(item => item.amount), 1);
+  document.getElementById("trend").innerHTML = monthly.map(item => `
+    <div class="month-item">
+      <div class="month-bar" style="height:${{Math.max(12, item.amount / maxMonth * 230)}}px"></div>
+      <div class="month-label">${{item.month}}</div>
+      <div class="month-value">${{compact(item.amount)}}</div>
+    </div>
+  `).join("");
+
+  const waterfall = [
+    {{ name: "Accepted", amount: acceptedRevenue }},
+    {{ name: "Invoiced", amount: invoicedRevenue }},
+    {{ name: "Cash Collected", amount: cashCollected }},
+    {{ name: "Outstanding AR", amount: outstandingAR }},
+  ];
+  renderBars("waterfall", waterfall, "green");
+
+  renderBars("clients", groupSum(rows, "Client"), "purple");
+  renderBars("services", groupSum(rows, "Service"), "");
+
+  const aging = [
+    {{ name: "0–30 days", amount: sum(arRows.filter(row => row.agingDays <= 30)) }},
+    {{ name: "31–60 days", amount: sum(arRows.filter(row => row.agingDays > 30 && row.agingDays <= 60)) }},
+    {{ name: "61–90 days", amount: sum(arRows.filter(row => row.agingDays > 60 && row.agingDays <= 90)) }},
+    {{ name: ">90 days", amount: sum(arRows.filter(row => row.agingDays > 90)) }},
+  ];
+  renderBars("aging", aging, "red");
+
+  document.getElementById("arTable").innerHTML = arRows.length
+    ? arRows.slice(0, 12).map(row => `
+      <tr>
+        <td>${{row["Client"] || "-"}}</td>
+        <td>${{row["Service"] || "-"}}</td>
+        <td>${{row["Invoice Issued No"] || "-"}}</td>
+        <td class="right"><strong>${{vnd(value(row))}}</strong></td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="4" style="color:var(--muted);">No outstanding AR found.</td></tr>`;
+}}
+
+async function loadData() {{
+  const status = document.getElementById("status");
+  try {{
+    status.textContent = "Đang tải dữ liệu từ Google Sheet...";
+    const response = await fetch(CSV_URL);
+    if (!response.ok) throw new Error("Không đọc được CSV. Hãy kiểm tra Published CSV link.");
+    const text = await response.text();
+    const rows = parseCsv(text);
+    if (!rows.length) throw new Error("CSV không có dữ liệu hợp lệ.");
+    renderDashboard(rows);
+    status.textContent = `Đã tải thành công ${{rows.length}} dòng dữ liệu từ MASTER TRACKING.`;
+  }} catch (error) {{
+    status.textContent = error.message;
+    renderDashboard([]);
+  }}
+}}
+
+loadData();
 </script>
 
 </body>
-
 </html>
+"""
+
+path = Path("/mnt/data/goldnet_financial_dashboard_index.html")
+path.write_text(html, encoding="utf-8")
+print(path)
