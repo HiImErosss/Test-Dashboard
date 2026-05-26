@@ -11,11 +11,11 @@
 </head>
 <body>
 <h1>Goldnet Financial Dashboard</h1>
-<div class="sub">Finance Manager View • Revenue • Project Status • Acceptance • Invoice • Cash-in • AR Aging</div>
+<div class="sub">Start Project Year View • Revenue • Acceptance • Invoice • Cash-in • AR</div>
 <div id="status" class="status">Đang tải dữ liệu từ Google Sheet...</div>
 
 <div class="filters">
-  <div><label>Năm doanh số</label><select id="filterYear"></select></div>
+  <div><label>Năm doanh số theo Start Project</label><select id="filterYear"></select></div>
   <div><label>Client</label><select id="filterClient"></select></div>
   <div><label>PIC</label><select id="filterPic"></select></div>
   <div><label>Service Group</label><select id="filterServiceGroup"></select></div>
@@ -28,14 +28,16 @@
 <div id="kpis2" class="grid"></div>
 
 <div class="grid2">
-  <div class="card"><h3>Revenue Trend</h3><div class="chart-sub">Theo Tháng Xuất Hóa Đơn / Invoice Date</div><div id="trend" class="months"></div></div>
-  <div class="card"><h3>Revenue Waterfall</h3><div class="chart-sub">Contract Value → Accepted → Invoiced → Cash Collected → AR</div><div id="waterfall"></div></div>
-  <div class="card"><h3>Revenue by Client</h3><div class="chart-sub">Top clients theo doanh thu chưa VAT</div><div id="clients"></div></div>
-  <div class="card"><h3>Revenue by Service</h3><div class="chart-sub">Phân loại dịch vụ</div><div id="services"></div></div>
+  <div class="card"><h3>Revenue by Start Project Month</h3><div class="chart-sub">Tất cả doanh thu tính theo Month (start project)</div><div id="trend" class="months"></div></div>
+  <div class="card"><h3>Revenue Logic</h3><div class="chart-sub">Start Year Revenue → Accepted → In Acceptance → Invoiced → Cash Collected</div><div id="waterfall"></div></div>
+  <div class="card"><h3>Revenue by Client</h3><div class="chart-sub">Theo năm start dự án</div><div id="clients"></div></div>
+  <div class="card"><h3>Revenue by Service</h3><div class="chart-sub">Phân loại dịch vụ theo năm start dự án</div><div id="services"></div></div>
   <div class="card"><h3>Project Status Mix</h3><div class="chart-sub">Done / Running / Pending...</div><div id="projectStatus"></div></div>
-  <div class="card"><h3>Acceptance Status</h3><div class="chart-sub">Đã nghiệm thu / Chưa nghiệm thu</div><div id="acceptance"></div></div>
+  <div class="card"><h3>Acceptance Status</h3><div class="chart-sub">Đã nghiệm thu / Đang nghiệm thu / Chưa nghiệm thu</div><div id="acceptance"></div></div>
+  <div class="card"><h3>Invoice Revenue by Invoice Year</h3><div class="chart-sub">Phụ trợ: doanh thu xuất hóa đơn theo năm xuất hóa đơn</div><div id="invoiceYear"></div></div>
+  <div class="card"><h3>Invoice Revenue by Start Year</h3><div class="chart-sub">Phụ trợ: doanh thu đã xuất hóa đơn nhưng quy về năm start dự án</div><div id="invoiceByStart"></div></div>
+  <div class="card"><h3>Top Outstanding AR</h3><div class="chart-sub">Dựa trên start project year đang filter</div><div style="overflow:auto"><table><thead><tr><th>Client</th><th>PIC</th><th>Service</th><th>Invoice</th><th class="right">Amount</th></tr></thead><tbody id="arTable"></tbody></table></div></div>
   <div class="card"><h3>AR Aging</h3><div class="chart-sub">Đã xuất hóa đơn nhưng chưa thu tiền</div><div id="aging"></div></div>
-  <div class="card"><h3>Top Outstanding AR</h3><div class="chart-sub">Khoản phải thu lớn nhất</div><div style="overflow:auto"><table><thead><tr><th>Client</th><th>PIC</th><th>Service</th><th>Invoice</th><th class="right">Amount</th></tr></thead><tbody id="arTable"></tbody></table></div></div>
 </div>
 
 <script>
@@ -75,17 +77,23 @@ function num(v){if(!v)return 0; const n=String(v).replace(/\s/g,"").replace(/₫
 function vnd(v){return new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND",maximumFractionDigits:0}).format(v||0)}
 function compact(v){if(Math.abs(v)>=1e9)return (v/1e9).toFixed(1)+"B"; if(Math.abs(v)>=1e6)return (v/1e6).toFixed(0)+"M"; return new Intl.NumberFormat("vi-VN").format(v||0)}
 function parseDate(v){if(!v)return null; const s=String(v).trim(); let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(m)return new Date(+m[3],+m[2]-1,+m[1]); m=s.match(/^(\d{1,2})\/(\d{4})$/); if(m)return new Date(+m[2],+m[1]-1,1); const d=new Date(s); return isNaN(d)?null:d}
-function monthKey(r){const d=parseDate(r["Tháng Xuất Hóa Đơn"]||r["Invoice Date"]||r["Month (start project)"]); return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:"Unknown"}
-function yearKey(r){const d=parseDate(r["Tháng Xuất Hóa Đơn"]||r["Invoice Date"]||r["Month (start project)"]); return d?String(d.getFullYear()):"Unknown"}
+function startDate(r){return parseDate(r["Month (start project)"]||r["Contract Starting Date"])}
+function startMonthKey(r){const d=startDate(r); return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:"Unknown"}
+function startYearKey(r){const d=startDate(r); return d?String(d.getFullYear()):"Unknown"}
+function invoiceDate(r){return parseDate(r["Tháng Xuất Hóa Đơn"]||r["Invoice Date"])}
+function invoiceYearKey(r){const d=invoiceDate(r); return d?String(d.getFullYear()):"Unknown"}
 function daysFrom(v){const d=parseDate(v); if(!d)return 0; return Math.floor((new Date()-d)/(1000*60*60*24))}
 function val(r){return num(r["Value (Chưa VAT)"])}
 function isPaid(r){return txt(r["Payment Status"]).includes("da thanh toan") || Boolean(r["Ngày thanh toán thực"])}
-function isInvoiced(r){return Boolean(r["Invoice Issued No"]||r["Invoice Date"]||r["Tháng Xuất Hóa Đơn"])}
-function isAccepted(r){return txt(r["Acceptance type"]).includes("nghiem thu")}
+function isInvoiced(r){return Boolean(r["Invoice Issued No"]||r["Invoice Date"]||r["Tháng Xuất Hóa Đơn"]) && !txt(r["Payment Status"]).includes("chua xuat hoa don")}
+function acceptanceText(r){return txt(r["Acceptance type"])}
+function isAccepted(r){return acceptanceText(r).includes("da nghiem thu")}
+function isInAcceptance(r){return acceptanceText(r).includes("dang nghiem thu")}
 function sum(rows){return rows.reduce((a,b)=>a+val(b),0)}
 function group(rows,field){const m=new Map(); rows.forEach(r=>{const k=r[field]||"Unknown"; m.set(k,(m.get(k)||0)+val(r))}); return [...m.entries()].map(([name,amount])=>({name,amount})).filter(x=>x.amount>0).sort((a,b)=>b.amount-a.amount)}
+function groupByFn(rows,fn){const m=new Map(); rows.forEach(r=>{const k=fn(r)||"Unknown"; m.set(k,(m.get(k)||0)+val(r))}); return [...m.entries()].map(([name,amount])=>({name,amount})).filter(x=>x.amount>0).sort((a,b)=>String(a.name).localeCompare(String(b.name)))}
 function kpi(title,amount,helper,cls){return `<div class="card"><div class="label">${title}</div><div class="value ${cls}">${amount}</div><div class="helper">${helper}</div></div>`}
-function bars(id,data,cls=""){const max=Math.max(...data.map(x=>x.amount),1); document.getElementById(id).innerHTML=data.slice(0,10).map(x=>`<div class="bar-row"><div class="bar-top"><span>${x.name}</span><b>${vnd(x.amount)}</b></div><div class="track"><div class="fill ${cls}" style="width:${Math.max(2,x.amount/max*100)}%"></div></div></div>`).join("")}
+function bars(id,data,cls=""){const max=Math.max(...data.map(x=>x.amount),1); document.getElementById(id).innerHTML=data.slice(0,10).map(x=>`<div class="bar-row"><div class="bar-top"><span>${x.name}</span><b>${vnd(x.amount)}</b></div><div class="track"><div class="fill ${cls}" style="width:${Math.max(2,x.amount/max*100)}%"></div></div></div>`).join("") || `<div class="small">No data</div>`}
 
 function fillFilter(id, values){
   const el=document.getElementById(id); const current=el.value||"All";
@@ -94,7 +102,9 @@ function fillFilter(id, values){
   if(opts.includes(current)) el.value=current;
 }
 function setupFilters(rows){
-  fillFilter("filterYear", rows.map(yearKey));
+  fillFilter("filterYear", rows.map(startYearKey));
+  const years=[...new Set(rows.map(startYearKey).filter(y=>y!=="Unknown"))].sort();
+  if(years.includes("2026")) document.getElementById("filterYear").value="2026";
   fillFilter("filterClient", rows.map(r=>r["Client"]));
   fillFilter("filterPic", rows.map(r=>r["PIC"]));
   fillFilter("filterServiceGroup", rows.map(r=>r["Service Group"]));
@@ -106,7 +116,7 @@ function setupFilters(rows){
 function selected(id){return document.getElementById(id).value}
 function filteredRows(){
   return allRows.filter(r=>
-    (selected("filterYear")==="All"||yearKey(r)===selected("filterYear")) &&
+    (selected("filterYear")==="All"||startYearKey(r)===selected("filterYear")) &&
     (selected("filterClient")==="All"||r["Client"]===selected("filterClient")) &&
     (selected("filterPic")==="All"||r["PIC"]===selected("filterPic")) &&
     (selected("filterServiceGroup")==="All"||r["Service Group"]===selected("filterServiceGroup")) &&
@@ -117,33 +127,47 @@ function filteredRows(){
 }
 function render(){
   const rows=filteredRows();
-  const total=sum(rows), accepted=sum(rows.filter(isAccepted)), invoiced=sum(rows.filter(isInvoiced)), cash=sum(rows.filter(isPaid)), ar=Math.max(invoiced-cash,0);
-  const notAccepted=sum(rows.filter(r=>!isAccepted(r))), acceptedNotInvoiced=sum(rows.filter(r=>isAccepted(r)&&!isInvoiced(r)));
+  const startRevenue=sum(rows);
+  const accepted=sum(rows.filter(isAccepted));
+  const inAcceptance=sum(rows.filter(isInAcceptance));
+  const invoicedByStart=sum(rows.filter(isInvoiced));
+  const cashByStart=sum(rows.filter(isPaid));
+  const ar=Math.max(invoicedByStart-cashByStart,0);
+  const acceptedNotInvoiced=sum(rows.filter(r=>isAccepted(r)&&!isInvoiced(r)));
   const arRows=rows.filter(r=>isInvoiced(r)&&!isPaid(r)).map(r=>({...r,aging:daysFrom(r["Invoice Date"])})).sort((a,b)=>val(b)-val(a));
-  const ar90=sum(arRows.filter(r=>r.aging>90)); const avgDso=arRows.length?Math.round(arRows.reduce((a,b)=>a+(b.aging||0),0)/arRows.length):0;
-  const collectionRate=invoiced?cash/invoiced:0;
+  const avgDso=arRows.length?Math.round(arRows.reduce((a,b)=>a+(b.aging||0),0)/arRows.length):0;
+  const collectionRate=invoicedByStart?cashByStart/invoicedByStart:0;
 
   document.getElementById("kpis1").innerHTML=
-    kpi("Total Revenue",vnd(total),`${rows.length} dòng sau filter`,"blue")+
-    kpi("Accepted Revenue",vnd(accepted),`${total?((accepted/total)*100).toFixed(1):0}% of total`,"good")+
-    kpi("Invoiced Revenue",vnd(invoiced),"Invoice issued/date/month available","purple")+
-    kpi("Cash Collected",vnd(cash),`${(collectionRate*100).toFixed(1)}% collection rate`,"good");
+    kpi("Doanh thu theo năm Start Project",vnd(startRevenue),`${rows.length} dòng sau filter`,"blue")+
+    kpi("Doanh thu đã chấp nhận nghiệm thu",vnd(accepted),`${startRevenue?((accepted/startRevenue)*100).toFixed(1):0}% of start-year revenue`,"good")+
+    kpi("Doanh thu đang nghiệm thu",vnd(inAcceptance),"Acceptance type = Đang nghiệm thu","warn")+
+    kpi("Cash Collected theo Start Project",vnd(cashByStart),`${(collectionRate*100).toFixed(1)}% trên doanh thu đã xuất HĐ`,"good");
+
   document.getElementById("kpis2").innerHTML=
-    kpi("Outstanding AR",vnd(ar),"Invoiced but not collected",ar>0?"bad":"good")+
-    kpi("AR > 90 Days",vnd(ar90),"High-risk receivables",ar90>0?"bad":"good")+
-    kpi("Accepted Not Invoiced",vnd(acceptedNotInvoiced),"Accepted but missing invoice info",acceptedNotInvoiced>0?"warn":"good")+
+    kpi("Doanh thu xuất HĐ theo Start Project",vnd(invoicedByStart),"Invoice value quy về năm start dự án","purple")+
+    kpi("Outstanding AR theo Start Project",vnd(ar),"Đã xuất HĐ nhưng chưa thu","bad")+
+    kpi("Accepted Not Invoiced",vnd(acceptedNotInvoiced),"Đã nghiệm thu nhưng chưa xuất HĐ","warn")+
     kpi("Avg DSO Proxy",`${avgDso} days`,"Average aging of open AR",avgDso>60?"bad":"good");
 
-  const mm=new Map(); rows.forEach(r=>{const k=monthKey(r); mm.set(k,(mm.get(k)||0)+val(r))});
-  const monthly=[...mm.entries()].map(([month,amount])=>({month,amount})).sort((a,b)=>a.month.localeCompare(b.month));
+  const monthly=groupByFn(rows,startMonthKey);
   const maxM=Math.max(...monthly.map(x=>x.amount),1);
-  document.getElementById("trend").innerHTML=monthly.map(x=>`<div class="month"><div class="monthbar" style="height:${Math.max(12,x.amount/maxM*230)}px"></div><div class="monthlabel">${x.month}</div><div class="monthvalue">${compact(x.amount)}</div></div>`).join("");
+  document.getElementById("trend").innerHTML=monthly.map(x=>`<div class="month"><div class="monthbar" style="height:${Math.max(12,x.amount/maxM*230)}px"></div><div class="monthlabel">${x.name}</div><div class="monthvalue">${compact(x.amount)}</div></div>`).join("");
 
-  bars("waterfall",[{name:"Contract Value",amount:total},{name:"Accepted",amount:accepted},{name:"Invoiced",amount:invoiced},{name:"Cash Collected",amount:cash},{name:"Outstanding AR",amount:ar}],"green");
+  bars("waterfall",[
+    {name:"Start Year Revenue",amount:startRevenue},
+    {name:"Accepted Revenue",amount:accepted},
+    {name:"In Acceptance",amount:inAcceptance},
+    {name:"Invoiced by Start Year",amount:invoicedByStart},
+    {name:"Cash Collected by Start Year",amount:cashByStart},
+    {name:"Outstanding AR",amount:ar}
+  ],"green");
   bars("clients",group(rows,"Client"),"purple");
   bars("services",group(rows,"Service"));
   bars("projectStatus",group(rows,"Project Status"),"green");
   bars("acceptance",group(rows,"Acceptance type"),"purple");
+  bars("invoiceYear",groupByFn(rows.filter(isInvoiced),invoiceYearKey),"purple");
+  bars("invoiceByStart",groupByFn(rows.filter(isInvoiced),startYearKey),"green");
   bars("aging",[
     {name:"0–30 days",amount:sum(arRows.filter(r=>r.aging<=30))},
     {name:"31–60 days",amount:sum(arRows.filter(r=>r.aging>30&&r.aging<=60))},
@@ -159,7 +183,7 @@ async function load(){
     const res=await fetch(CSV_URL); if(!res.ok) throw new Error("Không đọc được CSV.");
     allRows=parseCsv(await res.text());
     setupFilters(allRows); render();
-    st.innerHTML=`Đã tải thành công <b>${allRows.length}</b> dòng dữ liệu từ MASTER TRACKING.`;
+    st.innerHTML=`Đã tải thành công <b>${allRows.length}</b> dòng dữ liệu từ MASTER TRACKING. Tất cả KPI chính đang tính theo <b>Month (start project)</b>.`;
   }catch(e){st.textContent=e.message}
 }
 load();
